@@ -1,0 +1,4 @@
+{
+  "node-engine": "github.com/paketo-buildpacks/node-engine",
+  "node-start": "github.com/paketo-buildpacks/node-start"
+}
