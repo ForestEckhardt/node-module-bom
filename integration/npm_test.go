@@ -13,7 +13,7 @@ import (
 	. "github.com/paketo-buildpacks/occam/matchers"
 )
 
-func testDefault(t *testing.T, context spec.G, it spec.S) {
+func testNPM(t *testing.T, context spec.G, it spec.S) {
 	var (
 		Expect     = NewWithT(t).Expect
 		Eventually = NewWithT(t).Eventually
@@ -47,8 +47,7 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 			Expect(os.RemoveAll(source)).To(Succeed())
 		})
 
-		context("default app builds", func() {
-
+		context("building a basic npm app is pack built", func() {
 			it.After(func() {
 				Expect(docker.Container.Remove.Execute(container.ID)).To(Succeed())
 			})
@@ -56,7 +55,7 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 			it("builds, logs and runs correctly", func() {
 				var err error
 
-				source, err = occam.Source(filepath.Join("testdata", "default"))
+				source, err = occam.Source(filepath.Join("testdata", "npm_app"))
 				Expect(err).ToNot(HaveOccurred())
 
 				var logs fmt.Stringer
@@ -64,38 +63,12 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 					WithPullPolicy("never").
 					WithBuildpacks(
 						nodeEngineBuildpack,
+						npmInstallBuildpack,
 						nodeModuleBOMBuildpack,
-						nodeStartBuildpack,
+						npmStartBuildpack,
 					).
 					Execute(name, source)
 				Expect(err).ToNot(HaveOccurred(), logs.String)
-
-				// Expect(logs).To(ContainLines(
-				// 	fmt.Sprintf("%s %s", config.Buildpack.Name, version),
-				// 	"  Resolving Node Engine version",
-				// 	"    Candidate version sources (in priority order):",
-				// 	"      <unknown> -> \"\"",
-				// 	"",
-				// 	MatchRegexp(`    Selected Node Engine version \(using <unknown>\): \d+\.\d+\.\d+`),
-				// 	"",
-				// 	"  Executing build process",
-				// 	MatchRegexp(`    Installing Node Engine \d+\.\d+\.\d+`),
-				// 	MatchRegexp(`      Completed in \d+\.\d+`),
-				// 	"",
-				// 	"  Configuring build environment",
-				// 	`    NODE_ENV     -> "production"`,
-				// 	fmt.Sprintf(`    NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(config.Buildpack.ID, "/", "_")),
-				// 	`    NODE_VERBOSE -> "false"`,
-				// 	"",
-				// 	"  Configuring launch environment",
-				// 	`    NODE_ENV     -> "production"`,
-				// 	fmt.Sprintf(`    NODE_HOME    -> "/layers/%s/node"`, strings.ReplaceAll(config.Buildpack.ID, "/", "_")),
-				// 	`    NODE_VERBOSE -> "false"`,
-				// 	"",
-				// 	"    Writing profile.d/0_memory_available.sh",
-				// 	"      Calculates available memory based on container limits at launch time.",
-				// 	"      Made available in the MEMORY_AVAILABLE environment variable.",
-				// ))
 
 				container, err = docker.Container.Run.
 					WithPublish("8080").
@@ -103,8 +76,8 @@ func testDefault(t *testing.T, context spec.G, it spec.S) {
 				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(container).Should(BeAvailable())
-
 				Eventually(container).Should(Serve(ContainSubstring("hello world")).OnPort(8080))
+				Expect(image.Labels["io.buildpacks.build.metadata"]).To(ContainSubstring(`"name":"leftpad"`))
 			})
 		})
 	})

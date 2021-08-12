@@ -20,7 +20,10 @@ var (
 	offlineNodeModuleBOMBuildpack string
 	nodeEngineBuildpack           string
 	offlineNodeEngineBuildpack    string
+	npmInstallBuildpack           string
+	offlineNPMInstallBuildpack    string
 	nodeStartBuildpack            string
+	npmStartBuildpack             string
 	root                          string
 
 	config struct {
@@ -33,6 +36,9 @@ var (
 	integrationjson struct {
 		NodeEngine string `json:"node-engine"`
 		NodeStart  string `json:"node-start"`
+
+		NPMInstall string `json:"npm-install"`
+		NPMStart   string `json:"npm-start"`
 	}
 )
 
@@ -73,7 +79,7 @@ func TestIntegration(t *testing.T) {
 		Execute(integrationjson.NodeEngine)
 	Expect(err).NotTo(HaveOccurred())
 
-	nodeEngineBuildpack, err = buildpackStore.Get.
+	offlineNodeEngineBuildpack, err = buildpackStore.Get.
 		WithOfflineDependencies().
 		Execute(integrationjson.NodeEngine)
 	Expect(err).NotTo(HaveOccurred())
@@ -82,9 +88,23 @@ func TestIntegration(t *testing.T) {
 		Execute(integrationjson.NodeStart)
 	Expect(err).NotTo(HaveOccurred())
 
+	npmInstallBuildpack, err = buildpackStore.Get.
+		Execute(integrationjson.NPMInstall)
+	Expect(err).NotTo(HaveOccurred())
+
+	offlineNPMInstallBuildpack, err = buildpackStore.Get.
+		WithOfflineDependencies().
+		Execute(integrationjson.NPMInstall)
+	Expect(err).NotTo(HaveOccurred())
+
+	npmStartBuildpack, err = buildpackStore.Get.
+		Execute(integrationjson.NPMStart)
+	Expect(err).NotTo(HaveOccurred())
+
 	SetDefaultEventuallyTimeout(5 * time.Second)
 
 	suite := spec.New("Integration", spec.Report(report.Terminal{}), spec.Parallel())
-	suite("Default", testDefault)
+	suite("Vendored", testVendored)
+	suite("NPM", testNPM)
 	suite.Run(t)
 }
