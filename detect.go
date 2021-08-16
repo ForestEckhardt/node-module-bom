@@ -10,11 +10,6 @@ import (
 
 func Detect() packit.DetectFunc {
 	return func(context packit.DetectContext) (packit.DetectResult, error) {
-		val := os.Getenv("BP_ENABLE_MODULE_BOM")
-		if val == "false" {
-			return packit.DetectResult{}, packit.Fail
-		}
-
 		plan := packit.BuildPlan{
 			Requires: []packit.BuildPlanRequirement{
 				{

@@ -78,23 +78,6 @@ func testDetect(t *testing.T, context spec.G, it spec.S) {
 		})
 	})
 
-	context("the BP_ENABLE_MODULE_BOM environment variable is set to false", func() {
-		it.Before(func() {
-			os.Setenv("BP_ENABLE_MODULE_BOM", "false")
-		})
-
-		it.After(func() {
-			os.Unsetenv("BP_ENABLE_MODULE_BOM")
-		})
-
-		it("fails to detect", func() {
-			_, err := detect(packit.DetectContext{
-				WorkingDir: workingDir,
-			})
-			Expect(err).To(MatchError(packit.Fail))
-		})
-	}, spec.Sequential())
-
 	context("failure cases", func() {
 		context("node_modules directory exists but cannot be stat", func() {
 			it.Before(func() {
