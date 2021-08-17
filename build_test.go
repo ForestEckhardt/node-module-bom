@@ -24,6 +24,7 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 
 		layersDir         string
 		cnbDir            string
+		workingDir        string
 		timestamp         time.Time
 		dependencyManager *fakes.DependencyManager
 		nodeModuleBOM     *fakes.NodeModuleBOM
@@ -38,6 +39,9 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 		Expect(err).NotTo(HaveOccurred())
 
 		cnbDir, err = os.MkdirTemp("", "cnb")
+		Expect(err).NotTo(HaveOccurred())
+
+		workingDir, err = os.MkdirTemp("", "workingDir")
 		Expect(err).NotTo(HaveOccurred())
 
 		timestamp = time.Now()
@@ -91,6 +95,7 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 	it.After(func() {
 		Expect(os.RemoveAll(layersDir)).To(Succeed())
 		Expect(os.RemoveAll(cnbDir)).To(Succeed())
+		Expect(os.RemoveAll(workingDir)).To(Succeed())
 	})
 
 	it("returns a result that installs cyclonedx-node-module", func() {
@@ -99,10 +104,11 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 				Name:    "Some Buildpack",
 				Version: "some-version",
 			},
-			CNBPath:  cnbDir,
-			Platform: packit.Platform{Path: "platform"},
-			Layers:   packit.Layers{Path: layersDir},
-			Stack:    "some-stack",
+			CNBPath:    cnbDir,
+			Platform:   packit.Platform{Path: "platform"},
+			Layers:     packit.Layers{Path: layersDir},
+			Stack:      "some-stack",
+			WorkingDir: workingDir,
 		})
 		Expect(err).NotTo(HaveOccurred())
 
@@ -192,6 +198,6 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 			},
 		}))
 
-		Expect(nodeModuleBOM.GenerateCall.Receives.LayerPath).To(Equal(filepath.Join(layersDir, "cyclonedx-node-module")))
+		Expect(nodeModuleBOM.GenerateCall.Receives.WorkingDir).To(Equal(workingDir))
 	})
 }

@@ -11,7 +11,7 @@ type NodeModuleBOM struct {
 		sync.Mutex
 		CallCount int
 		Receives  struct {
-			LayerPath string
+			WorkingDir string
 		}
 		Returns struct {
 			BOMEntrySlice []packit.BOMEntry
@@ -25,7 +25,7 @@ func (f *NodeModuleBOM) Generate(param1 string) ([]packit.BOMEntry, error) {
 	f.GenerateCall.Lock()
 	defer f.GenerateCall.Unlock()
 	f.GenerateCall.CallCount++
-	f.GenerateCall.Receives.LayerPath = param1
+	f.GenerateCall.Receives.WorkingDir = param1
 	if f.GenerateCall.Stub != nil {
 		return f.GenerateCall.Stub(param1)
 	}

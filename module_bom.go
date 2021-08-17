@@ -63,13 +63,13 @@ func (m ModuleBOM) Generate(workingDir string) ([]packit.BOMEntry, error) {
 
 	file, err := os.Open(filepath.Join(workingDir, "bom.json"))
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to open bom.json: %w", err)
 	}
 	defer file.Close()
 
 	err = json.NewDecoder(file).Decode(&bom)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to decode bom.json: %w", err)
 	}
 
 	var entries []packit.BOMEntry
@@ -92,7 +92,7 @@ func (m ModuleBOM) Generate(workingDir string) ([]packit.BOMEntry, error) {
 
 	err = os.Remove(filepath.Join(workingDir, "bom.json"))
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to remove bom.json: %w", err)
 	}
 
 	return entries, nil

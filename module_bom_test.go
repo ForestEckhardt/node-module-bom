@@ -155,11 +155,74 @@ func testModuleBOM(t *testing.T, context spec.G, it spec.S) {
 						return errors.New("error")
 					}
 				})
-
 				it("returns an error", func() {
 					_, err := moduleBOM.Generate(workingDir)
 					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError("failed to run cyclonedx-bom: error"))
+				})
+			})
+
+			context("cannot open the bom.json file", func() {
+				it.Before(func() {
+					executable.ExecuteCall.Stub = func(execution pexec.Execution) error {
+						Expect(os.WriteFile(filepath.Join(workingDir, "bom.json"), []byte(
+							`
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.3",
+  "serialNumber": "urn:uuid:a717bde3-8a77-4ec6-a530-5d0d9007ecbe",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2021-08-16T19:35:52.107Z",
+    "tools": [
+      {
+        "vendor": "CycloneDX",
+        "name": "Node.js module",
+        "version": "3.0.3"
+      }
+    ]
+}
+`), 0000)).To(Succeed())
+						return nil
+					}
+				})
+
+				it("returns an error", func() {
+					_, err := moduleBOM.Generate(workingDir)
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring("failed to open bom.json")))
+				})
+			})
+
+			context("cannot decode the bom.json into a struct", func() {
+				it.Before(func() {
+					executable.ExecuteCall.Stub = func(execution pexec.Execution) error {
+						Expect(os.WriteFile(filepath.Join(workingDir, "bom.json"), []byte(
+							`
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.3",
+  "serialNumber": "urn:uuid:a717bde3-8a77-4ec6-a530-5d0d9007ecbe",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2021-08-16T19:35:52.107Z",
+    "tools": [
+      {
+        "vendor": "CycloneDX",
+        "name": "Node.js module",
+        "version": "3.0.3"
+      }
+    ]
+}
+`), 0644)).To(Succeed())
+						return nil
+					}
+				})
+
+				it("returns an error", func() {
+					_, err := moduleBOM.Generate(workingDir)
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring("failed to decode bom.json")))
 				})
 			})
 		})

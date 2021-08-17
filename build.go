@@ -1,6 +1,8 @@
 package nodemodulebom
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -19,7 +21,7 @@ type DependencyManager interface {
 
 //go:generate faux --interface NodeModuleBOM --output fakes/node_module_bom.go
 type NodeModuleBOM interface {
-	Generate(layerPath string) ([]packit.BOMEntry, error)
+	Generate(workingDir string) ([]packit.BOMEntry, error)
 }
 
 func Build(dependencyManager DependencyManager, nodeModuleBOM NodeModuleBOM, clock chronos.Clock, logger scribe.Emitter) packit.BuildFunc {
@@ -44,12 +46,6 @@ func Build(dependencyManager DependencyManager, nodeModuleBOM NodeModuleBOM, clo
 			panic(err)
 		}
 
-		toolBOM := dependencyManager.GenerateBillOfMaterials(dependency)
-		moduleBOM, err := nodeModuleBOM.Generate(cycloneDXNodeModuleLayer.Path)
-		if err != nil {
-			panic(err)
-		}
-
 		cycloneDXNodeModuleLayer.Cache = true
 		cycloneDXNodeModuleLayer.Metadata = map[string]interface{}{
 			"dependency-sha": dependency.SHA256,
@@ -58,6 +54,15 @@ func Build(dependencyManager DependencyManager, nodeModuleBOM NodeModuleBOM, clo
 		_, err = clock.Measure(func() error {
 			return dependencyManager.Deliver(dependency, context.CNBPath, cycloneDXNodeModuleLayer.Path, context.Platform.Path)
 		})
+		if err != nil {
+			panic(err)
+		}
+
+		logger.Process("Configuring environment")
+		os.Setenv("PATH", fmt.Sprint(os.Getenv("PATH"), string(os.PathListSeparator), filepath.Join(cycloneDXNodeModuleLayer.Path, "bin")))
+
+		toolBOM := dependencyManager.GenerateBillOfMaterials(dependency)
+		moduleBOM, err := nodeModuleBOM.Generate(context.WorkingDir)
 		if err != nil {
 			panic(err)
 		}
