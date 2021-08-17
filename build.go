@@ -33,17 +33,17 @@ func Build(dependencyManager DependencyManager, nodeModuleBOM NodeModuleBOM, clo
 			context.Stack,
 		)
 		if err != nil {
-			panic(err)
+			return packit.BuildResult{}, err
 		}
 
 		cycloneDXNodeModuleLayer, err := context.Layers.Get("cyclonedx-node-module")
 		if err != nil {
-			panic(err)
+			return packit.BuildResult{}, err
 		}
 
 		cycloneDXNodeModuleLayer, err = cycloneDXNodeModuleLayer.Reset()
 		if err != nil {
-			panic(err)
+			return packit.BuildResult{}, err
 		}
 
 		cycloneDXNodeModuleLayer.Cache = true
@@ -55,7 +55,7 @@ func Build(dependencyManager DependencyManager, nodeModuleBOM NodeModuleBOM, clo
 			return dependencyManager.Deliver(dependency, context.CNBPath, cycloneDXNodeModuleLayer.Path, context.Platform.Path)
 		})
 		if err != nil {
-			panic(err)
+			return packit.BuildResult{}, err
 		}
 
 		logger.Process("Configuring environment")
@@ -64,7 +64,7 @@ func Build(dependencyManager DependencyManager, nodeModuleBOM NodeModuleBOM, clo
 		toolBOM := dependencyManager.GenerateBillOfMaterials(dependency)
 		moduleBOM, err := nodeModuleBOM.Generate(context.WorkingDir)
 		if err != nil {
-			panic(err)
+			return packit.BuildResult{}, err
 		}
 
 		return packit.BuildResult{

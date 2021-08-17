@@ -22,8 +22,11 @@ var (
 	offlineNodeEngineBuildpack    string
 	npmInstallBuildpack           string
 	offlineNPMInstallBuildpack    string
+	yarnBuildpack                 string
+	yarnInstallBuildpack          string
 	nodeStartBuildpack            string
 	npmStartBuildpack             string
+	yarnStartBuildpack            string
 	root                          string
 
 	config struct {
@@ -39,6 +42,10 @@ var (
 
 		NPMInstall string `json:"npm-install"`
 		NPMStart   string `json:"npm-start"`
+
+		Yarn        string `json:"yarn"`
+		YarnInstall string `json:"yarn-install"`
+		YarnStart   string `json:"yarn-start"`
 	}
 )
 
@@ -101,10 +108,23 @@ func TestIntegration(t *testing.T) {
 		Execute(integrationjson.NPMStart)
 	Expect(err).NotTo(HaveOccurred())
 
+	yarnBuildpack, err = buildpackStore.Get.
+		Execute(integrationjson.Yarn)
+	Expect(err).NotTo(HaveOccurred())
+
+	yarnInstallBuildpack, err = buildpackStore.Get.
+		Execute(integrationjson.YarnInstall)
+	Expect(err).NotTo(HaveOccurred())
+
+	yarnStartBuildpack, err = buildpackStore.Get.
+		Execute(integrationjson.YarnStart)
+	Expect(err).NotTo(HaveOccurred())
+
 	SetDefaultEventuallyTimeout(5 * time.Second)
 
 	suite := spec.New("Integration", spec.Report(report.Terminal{}), spec.Parallel())
-	suite("Vendored", testVendored)
 	suite("NPM", testNPM)
+	suite("Vendored", testVendored)
+	suite("Yarn", testYarn)
 	suite.Run(t)
 }

@@ -2,6 +2,7 @@ package nodemodulebom_test
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -199,5 +200,97 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 		}))
 
 		Expect(nodeModuleBOM.GenerateCall.Receives.WorkingDir).To(Equal(workingDir))
+	})
+
+	context("failure cases", func() {
+		context("the dependency cannot be resolved", func() {
+			it.Before(func() {
+				dependencyManager.ResolveCall.Returns.Error = errors.New("failed to resolve dependency")
+			})
+			it("returns an error", func() {
+				_, err := build(packit.BuildContext{
+					CNBPath:    cnbDir,
+					Platform:   packit.Platform{Path: "platform"},
+					Layers:     packit.Layers{Path: layersDir},
+					Stack:      "some-stack",
+					WorkingDir: workingDir,
+				})
+				Expect(err).To(MatchError(ContainSubstring("failed to resolve dependency")))
+			})
+		})
+
+		context("when the cyclonedx-node-module layer cannot be retrieved", func() {
+			it.Before(func() {
+				err := os.WriteFile(filepath.Join(layersDir, "cyclonedx-node-module.toml"), nil, 0000)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			it("returns an error", func() {
+				_, err := build(packit.BuildContext{
+					CNBPath:    cnbDir,
+					Platform:   packit.Platform{Path: "platform"},
+					Layers:     packit.Layers{Path: layersDir},
+					Stack:      "some-stack",
+					WorkingDir: workingDir,
+				})
+				Expect(err).To(MatchError(ContainSubstring("failed to parse layer content metadata")))
+			})
+		})
+
+		context("when the cyclonedx-node-module layer cannot be reset", func() {
+			it.Before(func() {
+				Expect(os.MkdirAll(filepath.Join(layersDir, "cyclonedx-node-module", "something"), os.ModePerm)).To(Succeed())
+				Expect(os.Chmod(filepath.Join(layersDir, "cyclonedx-node-module"), 0500)).To(Succeed())
+			})
+
+			it.After(func() {
+				Expect(os.Chmod(filepath.Join(layersDir, "cyclonedx-node-module"), os.ModePerm)).To(Succeed())
+			})
+
+			it("returns an error", func() {
+				_, err := build(packit.BuildContext{
+					CNBPath:    cnbDir,
+					Platform:   packit.Platform{Path: "platform"},
+					Layers:     packit.Layers{Path: layersDir},
+					Stack:      "some-stack",
+					WorkingDir: workingDir,
+				})
+				Expect(err).To(MatchError(ContainSubstring("could not remove file")))
+			})
+		})
+
+		context("when the dependency cannot be installed", func() {
+			it.Before(func() {
+				dependencyManager.DeliverCall.Returns.Error = errors.New("failed to install dependency")
+			})
+
+			it("returns an error", func() {
+				_, err := build(packit.BuildContext{
+					CNBPath:    cnbDir,
+					Platform:   packit.Platform{Path: "platform"},
+					Layers:     packit.Layers{Path: layersDir},
+					Stack:      "some-stack",
+					WorkingDir: workingDir,
+				})
+				Expect(err).To(MatchError(ContainSubstring("failed to install dependency")))
+			})
+		})
+
+		context("when the node module BOM cannot be generated", func() {
+			it.Before(func() {
+				nodeModuleBOM.GenerateCall.Returns.Error = errors.New("failed to generate node module BOM")
+			})
+
+			it("returns an error", func() {
+				_, err := build(packit.BuildContext{
+					CNBPath:    cnbDir,
+					Platform:   packit.Platform{Path: "platform"},
+					Layers:     packit.Layers{Path: layersDir},
+					Stack:      "some-stack",
+					WorkingDir: workingDir,
+				})
+				Expect(err).To(MatchError(ContainSubstring("failed to generate node module BOM")))
+			})
+		})
 	})
 }
