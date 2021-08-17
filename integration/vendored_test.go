@@ -69,6 +69,23 @@ func testVendored(t *testing.T, context spec.G, it spec.S) {
 					Execute(name, source)
 				Expect(err).ToNot(HaveOccurred(), logs.String)
 
+				Expect(logs).To(ContainLines(
+					fmt.Sprintf("%s 1.2.3", config.Buildpack.Name),
+					"  Resolving CycloneDX Node.js Module version",
+					MatchRegexp(`    Selected CycloneDX Node.js Module version: \d+\.\d+\.\d+`),
+					"",
+					"  Executing build process",
+					MatchRegexp(`    Installing CycloneDX Node.js Module \d+\.\d+\.\d+`),
+					MatchRegexp(`      Completed in ([0-9]*(\.[0-9]*)?[a-z]+)+`),
+					"",
+					"  Configuring environment",
+					"    Appending CycloneDX Node.js Module onto PATH",
+					"",
+					"  Running CycloneDX Node.js Module",
+					`    Running 'cyclonedx-bom -o bom.json'`,
+					MatchRegexp(`      Completed in ([0-9]*(\.[0-9]*)?[a-z]+)+`),
+				))
+
 				container, err = docker.Container.Run.
 					WithPublish("8080").
 					Execute(image.ID)

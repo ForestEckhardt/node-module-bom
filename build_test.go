@@ -304,6 +304,9 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 				},
 			}))
 			Expect(nodeModuleBOM.GenerateCall.Receives.WorkingDir).To(Equal(workingDir))
+
+			Expect(buffer.String()).To(ContainSubstring("Reusing cached layer"))
+			Expect(buffer.String()).ToNot(ContainSubstring("Executing build process"))
 		})
 	})
 

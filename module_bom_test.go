@@ -3,6 +3,7 @@ package nodemodulebom_test
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -152,13 +153,17 @@ func testModuleBOM(t *testing.T, context spec.G, it spec.S) {
 			context("the cyclonedx-bom executable call fails", func() {
 				it.Before(func() {
 					executable.ExecuteCall.Stub = func(execution pexec.Execution) error {
+						fmt.Fprintln(execution.Stdout, "build error stdout")
+						fmt.Fprintln(execution.Stderr, "build error stderr")
 						return errors.New("error")
 					}
 				})
 				it("returns an error", func() {
 					_, err := moduleBOM.Generate(workingDir)
-					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError("failed to run cyclonedx-bom: error"))
+
+					Expect(buffer.String()).To(ContainSubstring("        build error stdout"))
+					Expect(buffer.String()).To(ContainSubstring("        build error stderr"))
 				})
 			})
 

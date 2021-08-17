@@ -26,6 +26,10 @@ type NodeModuleBOM interface {
 
 func Build(dependencyManager DependencyManager, nodeModuleBOM NodeModuleBOM, clock chronos.Clock, logger scribe.Emitter) packit.BuildFunc {
 	return func(context packit.BuildContext) (packit.BuildResult, error) {
+		logger.Title("%s %s", context.BuildpackInfo.Name, context.BuildpackInfo.Version)
+
+		logger.Process("Resolving CycloneDX Node.js Module version")
+
 		dependency, err := dependencyManager.Resolve(
 			filepath.Join(context.CNBPath, "buildpack.toml"),
 			"cyclonedx-node-module",
@@ -35,6 +39,8 @@ func Build(dependencyManager DependencyManager, nodeModuleBOM NodeModuleBOM, clo
 		if err != nil {
 			return packit.BuildResult{}, err
 		}
+		logger.Subprocess("Selected %s version: %s", dependency.Name, dependency.Version)
+		logger.Break()
 
 		cycloneDXNodeModuleLayer, err := context.Layers.Get("cyclonedx-node-module")
 		if err != nil {
@@ -42,18 +48,25 @@ func Build(dependencyManager DependencyManager, nodeModuleBOM NodeModuleBOM, clo
 		}
 
 		cachedSHA, ok := cycloneDXNodeModuleLayer.Metadata["dependency-sha"].(string)
-		if !ok || cachedSHA != dependency.SHA256 {
+		if ok && cachedSHA == dependency.SHA256 {
+			logger.Process("Reusing cached layer %s", cycloneDXNodeModuleLayer.Path)
+			logger.Break()
+		} else {
+			logger.Process("Executing build process")
 			cycloneDXNodeModuleLayer, err = cycloneDXNodeModuleLayer.Reset()
 			if err != nil {
 				return packit.BuildResult{}, err
 			}
-
-			_, err = clock.Measure(func() error {
+			logger.Subprocess("Installing %s %s", dependency.Name, dependency.Version)
+			duration, err := clock.Measure(func() error {
 				return dependencyManager.Deliver(dependency, context.CNBPath, cycloneDXNodeModuleLayer.Path, context.Platform.Path)
 			})
 			if err != nil {
 				return packit.BuildResult{}, err
 			}
+
+			logger.Action("Completed in %s", duration.Round(time.Millisecond))
+			logger.Break()
 
 			cycloneDXNodeModuleLayer.Metadata = map[string]interface{}{
 				"dependency-sha": dependency.SHA256,
@@ -64,13 +77,25 @@ func Build(dependencyManager DependencyManager, nodeModuleBOM NodeModuleBOM, clo
 		cycloneDXNodeModuleLayer.Cache = true
 
 		logger.Process("Configuring environment")
+		logger.Subprocess("Appending %s onto PATH", dependency.Name)
+		logger.Break()
+
 		os.Setenv("PATH", fmt.Sprint(os.Getenv("PATH"), string(os.PathListSeparator), filepath.Join(cycloneDXNodeModuleLayer.Path, "bin")))
 
 		toolBOM := dependencyManager.GenerateBillOfMaterials(dependency)
-		moduleBOM, err := nodeModuleBOM.Generate(context.WorkingDir)
+
+		logger.Process("Running %s", dependency.Name)
+		var moduleBOM []packit.BOMEntry
+		duration, err := clock.Measure(func() error {
+			moduleBOM, err = nodeModuleBOM.Generate(context.WorkingDir)
+			return err
+		})
 		if err != nil {
 			return packit.BuildResult{}, err
 		}
+
+		logger.Action("Completed in %s", duration.Round(time.Millisecond))
+		logger.Break()
 
 		return packit.BuildResult{
 			Layers: []packit.Layer{cycloneDXNodeModuleLayer},

@@ -32,6 +32,27 @@ func NewModuleBOM(executable Executable, logger scribe.Emitter) ModuleBOM {
 
 func (m ModuleBOM) Generate(workingDir string) ([]packit.BOMEntry, error) {
 
+	buffer := bytes.NewBuffer(nil)
+	args := []string{"-o", "bom.json"}
+	m.logger.Subprocess("Running 'cyclonedx-bom %s'", strings.Join(args, " "))
+	err := m.executable.Execute(pexec.Execution{
+		Args:   args,
+		Dir:    workingDir,
+		Stdout: buffer,
+		Stderr: buffer,
+	})
+
+	if err != nil {
+		m.logger.Detail(buffer.String())
+		return nil, fmt.Errorf("failed to run cyclonedx-bom: %w", err)
+	}
+
+	file, err := os.Open(filepath.Join(workingDir, "bom.json"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to open bom.json: %w", err)
+	}
+	defer file.Close()
+
 	var bom struct {
 		Components []struct {
 			Name     string `json:"name"`
@@ -44,28 +65,6 @@ func (m ModuleBOM) Generate(workingDir string) ([]packit.BOMEntry, error) {
 			} `json:"licenses"`
 		} `json:"components"`
 	}
-
-	m.logger.Subprocess("Successful install of cyclonedx/bom")
-
-	buffer := bytes.NewBuffer(nil)
-	args := []string{"-o", "bom.json"}
-	m.logger.Subprocess("Running  'cyclonedx-bom %s'", strings.Join(args, " "))
-	err := m.executable.Execute(pexec.Execution{
-		Args:   args,
-		Dir:    workingDir,
-		Stdout: buffer,
-		Stderr: buffer,
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to run cyclonedx-bom: %w", err)
-	}
-
-	file, err := os.Open(filepath.Join(workingDir, "bom.json"))
-	if err != nil {
-		return nil, fmt.Errorf("failed to open bom.json: %w", err)
-	}
-	defer file.Close()
 
 	err = json.NewDecoder(file).Decode(&bom)
 	if err != nil {
