@@ -21,7 +21,6 @@ var (
 	nodeEngineBuildpack           string
 	offlineNodeEngineBuildpack    string
 	npmInstallBuildpack           string
-	offlineNPMInstallBuildpack    string
 	yarnBuildpack                 string
 	yarnInstallBuildpack          string
 	nodeStartBuildpack            string
@@ -99,11 +98,6 @@ func TestIntegration(t *testing.T) {
 		Execute(integrationjson.NPMInstall)
 	Expect(err).NotTo(HaveOccurred())
 
-	offlineNPMInstallBuildpack, err = buildpackStore.Get.
-		WithOfflineDependencies().
-		Execute(integrationjson.NPMInstall)
-	Expect(err).NotTo(HaveOccurred())
-
 	npmStartBuildpack, err = buildpackStore.Get.
 		Execute(integrationjson.NPMStart)
 	Expect(err).NotTo(HaveOccurred())
@@ -124,6 +118,7 @@ func TestIntegration(t *testing.T) {
 
 	suite := spec.New("Integration", spec.Report(report.Terminal{}), spec.Parallel())
 	suite("NPM", testNPM)
+	suite("Offline", testOffline)
 	suite("Vendored", testVendored)
 	suite("Yarn", testYarn)
 	suite.Run(t)

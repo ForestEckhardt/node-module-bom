@@ -3,6 +3,7 @@ package nodemodulebom_test
 import (
 	"bytes"
 	"errors"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -200,6 +201,110 @@ func testBuild(t *testing.T, context spec.G, it spec.S) {
 		}))
 
 		Expect(nodeModuleBOM.GenerateCall.Receives.WorkingDir).To(Equal(workingDir))
+	})
+
+	context("when there is a dependency cache match to reuse", func() {
+		it.Before(func() {
+			err := ioutil.WriteFile(filepath.Join(layersDir, "cyclonedx-node-module.toml"), []byte(`
+			[metadata]
+			dependency-sha = "cyclonedx-node-module-dependency-sha"
+			`), 0644)
+			Expect(err).NotTo(HaveOccurred())
+
+			dependencyManager.ResolveCall.Returns.Dependency = postal.Dependency{
+				ID:      "cyclonedx-node-module",
+				Name:    "cyclonedx-node-module-dependency-name",
+				SHA256:  "cyclonedx-node-module-dependency-sha",
+				Stacks:  []string{"some-stack"},
+				URI:     "cyclonedx-node-module-dependency-uri",
+				Version: "cyclonedx-node-module-dependency-version",
+			}
+		})
+
+		it("reuses the cache", func() {
+			result, err := build(packit.BuildContext{
+				BuildpackInfo: packit.BuildpackInfo{
+					Name:    "Some Buildpack",
+					Version: "some-version",
+				},
+				CNBPath:    cnbDir,
+				Platform:   packit.Platform{Path: "platform"},
+				Layers:     packit.Layers{Path: layersDir},
+				Stack:      "some-stack",
+				WorkingDir: workingDir,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(result).To(Equal(packit.BuildResult{
+				Layers: []packit.Layer{
+					{
+						Name:             "cyclonedx-node-module",
+						Path:             filepath.Join(layersDir, "cyclonedx-node-module"),
+						SharedEnv:        packit.Environment{},
+						BuildEnv:         packit.Environment{},
+						LaunchEnv:        packit.Environment{},
+						ProcessLaunchEnv: map[string]packit.Environment{},
+						Build:            false,
+						Launch:           false,
+						Cache:            true,
+						Metadata: map[string]interface{}{
+							"dependency-sha": "cyclonedx-node-module-dependency-sha",
+						},
+					},
+				},
+				Build: packit.BuildMetadata{
+					BOM: []packit.BOMEntry{
+						{
+							Name: "cyclonedx-node-module",
+							Metadata: map[string]interface{}{
+								"version": "cyclonedx-node-module-dependency-version",
+								"name":    "cyclonedx-node-module-dependency-name",
+								"sha256":  "cyclonedx-node-module-dependency-sha",
+								"stacks":  []string{"some-stack"},
+								"uri":     "cyclonedx-node-module-dependency-uri",
+							},
+						},
+						{
+							Name: "leftpad",
+							Metadata: map[string]interface{}{
+								"version": "leftpad-dependency-version",
+								"name":    "leftpad-dependency-name",
+								"sha256":  "leftpad-dependency-sha",
+								"stacks":  []string{"some-stack"},
+								"uri":     "leftpad-dependency-uri",
+							},
+						},
+					},
+				},
+				Launch: packit.LaunchMetadata{
+					BOM: []packit.BOMEntry{
+						{
+							Name: "leftpad",
+							Metadata: map[string]interface{}{
+								"version": "leftpad-dependency-version",
+								"name":    "leftpad-dependency-name",
+								"sha256":  "leftpad-dependency-sha",
+								"stacks":  []string{"some-stack"},
+								"uri":     "leftpad-dependency-uri",
+							},
+						},
+					},
+				},
+			}))
+
+			Expect(dependencyManager.DeliverCall.CallCount).To(Equal(0))
+			Expect(dependencyManager.GenerateBillOfMaterialsCall.Receives.Dependencies).To(Equal([]postal.Dependency{
+				{
+					ID:      "cyclonedx-node-module",
+					Name:    "cyclonedx-node-module-dependency-name",
+					SHA256:  "cyclonedx-node-module-dependency-sha",
+					Stacks:  []string{"some-stack"},
+					URI:     "cyclonedx-node-module-dependency-uri",
+					Version: "cyclonedx-node-module-dependency-version",
+				},
+			}))
+			Expect(nodeModuleBOM.GenerateCall.Receives.WorkingDir).To(Equal(workingDir))
+		})
 	})
 
 	context("failure cases", func() {

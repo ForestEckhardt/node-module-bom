@@ -41,22 +41,27 @@ func Build(dependencyManager DependencyManager, nodeModuleBOM NodeModuleBOM, clo
 			return packit.BuildResult{}, err
 		}
 
-		cycloneDXNodeModuleLayer, err = cycloneDXNodeModuleLayer.Reset()
-		if err != nil {
-			return packit.BuildResult{}, err
+		cachedSHA, ok := cycloneDXNodeModuleLayer.Metadata["dependency-sha"].(string)
+		if !ok || cachedSHA != dependency.SHA256 {
+			cycloneDXNodeModuleLayer, err = cycloneDXNodeModuleLayer.Reset()
+			if err != nil {
+				return packit.BuildResult{}, err
+			}
+
+			_, err = clock.Measure(func() error {
+				return dependencyManager.Deliver(dependency, context.CNBPath, cycloneDXNodeModuleLayer.Path, context.Platform.Path)
+			})
+			if err != nil {
+				return packit.BuildResult{}, err
+			}
+
+			cycloneDXNodeModuleLayer.Metadata = map[string]interface{}{
+				"dependency-sha": dependency.SHA256,
+				"built_at":       clock.Now().Format(time.RFC3339Nano),
+			}
 		}
 
 		cycloneDXNodeModuleLayer.Cache = true
-		cycloneDXNodeModuleLayer.Metadata = map[string]interface{}{
-			"dependency-sha": dependency.SHA256,
-			"built_at":       clock.Now().Format(time.RFC3339Nano),
-		}
-		_, err = clock.Measure(func() error {
-			return dependencyManager.Deliver(dependency, context.CNBPath, cycloneDXNodeModuleLayer.Path, context.Platform.Path)
-		})
-		if err != nil {
-			return packit.BuildResult{}, err
-		}
 
 		logger.Process("Configuring environment")
 		os.Setenv("PATH", fmt.Sprint(os.Getenv("PATH"), string(os.PathListSeparator), filepath.Join(cycloneDXNodeModuleLayer.Path, "bin")))
