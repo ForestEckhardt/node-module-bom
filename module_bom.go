@@ -55,9 +55,13 @@ func (m ModuleBOM) Generate(workingDir string) ([]packit.BOMEntry, error) {
 
 	var bom struct {
 		Components []struct {
-			Name     string `json:"name"`
-			PURL     string `json:"purl"`
-			Version  string `json:"version"`
+			Name    string `json:"name"`
+			PURL    string `json:"purl"`
+			Version string `json:"version"`
+			Hashes  []struct {
+				Algorithm string `json:"alg"`
+				Content   string `json:"content"`
+			} `json:"hashes"`
 			Licenses []struct {
 				License struct {
 					ID string `json:"id"`
@@ -79,6 +83,13 @@ func (m ModuleBOM) Generate(workingDir string) ([]packit.BOMEntry, error) {
 				"version": entry.Version,
 				"purl":    entry.PURL,
 			},
+		}
+
+		if len(entry.Hashes) > 0 {
+			packitEntry.Metadata["checksum"] = map[string]string{
+				"algorithm": entry.Hashes[0].Algorithm,
+				"hash":      entry.Hashes[0].Content,
+			}
 		}
 
 		var licenses []string

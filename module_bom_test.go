@@ -84,12 +84,6 @@ func testModuleBOM(t *testing.T, context spec.G, it spec.S) {
       "name": "rightpad",
       "version": "1.0.0",
       "description": "right pad numbers",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "some-sha"
-        }
-      ],
       "licenses": [
         {
           "license": {
@@ -131,17 +125,21 @@ func testModuleBOM(t *testing.T, context spec.G, it spec.S) {
 				{
 					Name: "leftpad",
 					Metadata: map[string]interface{}{
-						"version":  "0.0.1",
+						"checksum": map[string]string{
+							"algorithm": "SHA-1",
+							"hash":      "86b1a4de4face180ac545a83f1503523d8fed115",
+						},
 						"purl":     "pkg:npm/leftpad@0.0.1",
 						"licenses": []string{"BSD-3-Clause"},
+						"version":  "0.0.1",
 					},
 				},
 				{
 					Name: "rightpad",
 					Metadata: map[string]interface{}{
-						"version":  "1.0.0",
 						"purl":     "pkg:npm/rightpad@1.0.0",
 						"licenses": []string{"Apache"},
+						"version":  "1.0.0",
 					},
 				},
 			}))
@@ -170,24 +168,7 @@ func testModuleBOM(t *testing.T, context spec.G, it spec.S) {
 			context("cannot open the bom.json file", func() {
 				it.Before(func() {
 					executable.ExecuteCall.Stub = func(execution pexec.Execution) error {
-						Expect(os.WriteFile(filepath.Join(workingDir, "bom.json"), []byte(
-							`
-{
-  "bomFormat": "CycloneDX",
-  "specVersion": "1.3",
-  "serialNumber": "urn:uuid:a717bde3-8a77-4ec6-a530-5d0d9007ecbe",
-  "version": 1,
-  "metadata": {
-    "timestamp": "2021-08-16T19:35:52.107Z",
-    "tools": [
-      {
-        "vendor": "CycloneDX",
-        "name": "Node.js module",
-        "version": "3.0.3"
-      }
-    ]
-}
-`), 0000)).To(Succeed())
+						Expect(os.WriteFile(filepath.Join(workingDir, "bom.json"), []byte(``), 0000)).To(Succeed())
 						return nil
 					}
 				})
@@ -202,31 +183,13 @@ func testModuleBOM(t *testing.T, context spec.G, it spec.S) {
 			context("cannot decode the bom.json into a struct", func() {
 				it.Before(func() {
 					executable.ExecuteCall.Stub = func(execution pexec.Execution) error {
-						Expect(os.WriteFile(filepath.Join(workingDir, "bom.json"), []byte(
-							`
-{
-  "bomFormat": "CycloneDX",
-  "specVersion": "1.3",
-  "serialNumber": "urn:uuid:a717bde3-8a77-4ec6-a530-5d0d9007ecbe",
-  "version": 1,
-  "metadata": {
-    "timestamp": "2021-08-16T19:35:52.107Z",
-    "tools": [
-      {
-        "vendor": "CycloneDX",
-        "name": "Node.js module",
-        "version": "3.0.3"
-      }
-    ]
-}
-`), 0644)).To(Succeed())
+						Expect(os.WriteFile(filepath.Join(workingDir, "bom.json"), []byte(``), 0644)).To(Succeed())
 						return nil
 					}
 				})
 
 				it("returns an error", func() {
 					_, err := moduleBOM.Generate(workingDir)
-					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError(ContainSubstring("failed to decode bom.json")))
 				})
 			})
